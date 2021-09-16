@@ -1,0 +1,71 @@
+name: Create parquet files
+
+on:
+  push:
+    branches:
+      - gha
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+    working-directory: scripts
+
+jobs:
+  run:
+    name: Create parquet files
+    #runs-on: macos-latest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install Python dependencies
+        run: |
+          pip install dask dask_geopandas geopandas numpy pyarrow openpyxl
+
+      - name: Install Linux command line tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install -yy lftp wget
+
+      - name: Install macOS command line tools
+        if: runner.os == 'macOS'
+        run: |
+          brew install lftp wget
+
+      - name: Download boundaries
+        run: |
+          bash download_boundaries.sh
+
+      - name: Download population stats
+        run: |
+          bash download_population_stats.sh
+
+      - name: Download blocks
+        run: |
+          bash download_blocks.sh
+
+      - name: Process boundaries
+        run: |
+          python boundary_processing.py
+
+      - name: Process blocks
+        run: |
+          python process_blocks.py
+
+      - name: Upload output artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifact
+          path: |
+            census_boundaries/boundary_outputs/
+            tl_2020_FULL_tabblock20.parquet/
